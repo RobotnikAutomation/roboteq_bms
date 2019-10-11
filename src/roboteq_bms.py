@@ -51,7 +51,7 @@ class roboteq_bmsComponent(RComponent):
 	def __init__(self):
 		RComponent.__init__(self)
 
-		self.port = '/dev/ttyUSB_ROBOTEQ_BMS'
+		self.port = rospy.get_param('~port', '/dev/ttyUSB_ROBOTEQ_BMS')
 		self.read_errors = 0
 		self.bat_level= 0.0
 		self.voltage = 0.0

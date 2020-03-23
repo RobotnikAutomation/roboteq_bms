@@ -1,6 +1,7 @@
 <?xml version="1.0"?>
 <launch>
+	<arg name="port" default="/dev/ttyUSB_ROBOTEQ_BMS"/>
 	<node type="roboteq_bms.py" name="roboteq_bms" pkg="roboteq_bms" output="screen" respawn="true" respawn_delay="10">
-		<param name="port" value="/dev/ttyUSB_ROBOTEQ_BMS"/>
+		<param name="port" value="$(arg port)"/>
 	</node>
 </launch>

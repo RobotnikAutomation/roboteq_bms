@@ -142,7 +142,7 @@ class roboteq_bmsComponent(RComponent):
 
 			try:
 				if line_read != '':
-					self.current = float(line_read.partition("A=")[2])
+					self.current = -float(line_read.partition("A=")[2])
 					self.battery_status_message.current = self.current*0.01
 					emptys.append(False)
 				else:

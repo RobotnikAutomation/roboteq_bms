@@ -7,10 +7,10 @@
 ## Topics
 ### Publishers
 
-* ~battery_status (robotnik_msgs/BatteryStatus)
+* ~data (robotnik_msgs/BatteryStatus)
   * Publish all data received by BMS
 
-* ~bms_temperature (std_msgs/Int32)
+* ~temperature (std_msgs/Int32)
   * Publish the temperature of the BMS
 
 * ~cell_currents (std_msgs/String)

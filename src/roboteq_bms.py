@@ -96,8 +96,8 @@ class roboteq_bmsComponent(RComponent):
 	def rosSetup(self):
 		RComponent.rosSetup(self)
 
-		self.bat_data_publisher_ = rospy.Publisher('~battery_status', robotnik_msgs.msg.BatteryStatus, queue_size=100)
-		self.bms_temp_publisher_ = rospy.Publisher('~bms_temperature', std_msgs.msg.Int32, queue_size=100)
+		self.bat_data_publisher_ = rospy.Publisher('~data', robotnik_msgs.msg.BatteryStatus, queue_size=100)
+		self.bms_temp_publisher_ = rospy.Publisher('~temperature', std_msgs.msg.Int32, queue_size=100)
 		self.status_flags_publisher_ = rospy.Publisher('~status_flags', std_msgs.msg.String, queue_size=100)
 		self.cell_voltages_publisher_ = rospy.Publisher('~cell_voltages', std_msgs.msg.String, queue_size=100)
 		self.cell_currents_publisher_ = rospy.Publisher('~cell_currents', std_msgs.msg.String, queue_size=100)

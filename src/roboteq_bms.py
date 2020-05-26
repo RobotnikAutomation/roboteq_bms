@@ -134,7 +134,7 @@ class roboteq_bmsComponent(RComponent):
 				else:
 					emptys.append(True)
 			except ValueError, e:
-				rospy.logerr('%s::readyState: error reading ?BSC: %s', rospy.get_name(), e)
+				rospy.logerr('%s::readyState: error reading ?BSC - response (%s): %s', rospy.get_name(), line_read, e)
 				emptys.append(True)
 
 			self.writeToSerialDevice("?A 1" + "\r")
@@ -152,7 +152,7 @@ class roboteq_bmsComponent(RComponent):
 				else:
 					emptys.append(True)
 			except ValueError, e:
-				rospy.logerr('%s::readyState: error reading ?A 1: %s', rospy.get_name(), e)
+				rospy.logerr('%s::readyState: error reading ?A 1 - response (%s):: %s', rospy.get_name(), line_read, e)
 				emptys.append(True)
 
 			self.writeToSerialDevice("?V 1" + "\r")
@@ -166,10 +166,9 @@ class roboteq_bmsComponent(RComponent):
 				else:
 					emptys.append(True)
 			except ValueError, e:
-				rospy.logerr('%s::readyState: error reading ?V 1: %s', rospy.get_name(), e)
+				rospy.logerr('%s::readyState: error reading ?V 1 - response (%s):: %s', rospy.get_name(), line_read, e)
 				emptys.append(True)
 
-			#Extras Miguel
 			self.writeToSerialDevice("?T 1" + "\r")
 			line_read = str(self.readFromSerialDevice())
 
@@ -182,7 +181,7 @@ class roboteq_bmsComponent(RComponent):
 				else:
 					emptys.append(True)
 			except ValueError, e:
-				rospy.logerr('%s::readyState: error reading ?T 1: %s', rospy.get_name(), e)
+				rospy.logerr('%s::readyState: error reading ?T 1 - response (%s):: %s', rospy.get_name(), line_read, e)
 				emptys.append(True)
 
 			self.writeToSerialDevice("?BMF" + "\r")
@@ -196,7 +195,7 @@ class roboteq_bmsComponent(RComponent):
 				else:
 					emptys.append(True)
 			except ValueError, e:
-				rospy.logerr('%s::readyState: error reading ?BMF + r: %s', rospy.get_name(), e)
+				rospy.logerr('%s::readyState: error reading ?BMF - response(%s): %s', rospy.get_name(), line_read, e)
 				emptys.append(True)
 
 			self.writeToSerialDevice("?V" + "\r")
@@ -210,7 +209,7 @@ class roboteq_bmsComponent(RComponent):
 				else:
 					emptys.append(True)
 			except ValueError, e:
-				rospy.logerr('%s::readyState: error reading ?V + r: %s', rospy.get_name(), e)
+				rospy.logerr('%s::readyState: error reading ?V - response(%s): %s', rospy.get_name(), line_read, e)
 				emptys.append(True)
 
 			self.writeToSerialDevice("?A" + "\r")
@@ -224,13 +223,14 @@ class roboteq_bmsComponent(RComponent):
 				else:
 					emptys.append(True)
 			except ValueError, e:
-				rospy.logerr('%s::readyState: error reading ?A + r: %s', rospy.get_name(), e)
+				rospy.logerr('%s::readyState: error reading ?A - response (%s): %s', rospy.get_name(), line_read, e)
 				emptys.append(True)
 
 			if all(emptys):
-				rospy.logerr('all are empty, something wrong with bms')
+				rospy.logerr('%s::readyState: no response from bms', self._node_name)
+				self.switchToState(State.FAILURE_STATE)
 			elif any(emptys):
-				rospy.logwarn('some emtpy, missing some messages')
+				rospy.logwarn('%s::readyState: some response msgs from bms are empty', self._node_name)
 
 
 

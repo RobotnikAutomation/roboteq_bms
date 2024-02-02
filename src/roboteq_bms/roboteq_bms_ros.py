@@ -47,9 +47,7 @@ class RoboteqBMS(RComponent):
     """
 
     def __init__(self):
-
-        super().__init__()
-        self.port = 0
+        self.port = '/dev/ttyUSB_BMS'
         self.read_errors = 0
         self.bat_level= 0.0
         self.voltage = 0.0
@@ -63,7 +61,10 @@ class RoboteqBMS(RComponent):
         self.cell_currents_msg = String()
         self.status_flags_msg = String()
         self.serial_device = None
-
+        self.start_time = 0
+        self.charge_started = False
+        self.status = String()
+        super().__init__()
     def ros_read_params(self):
         """Gets params from param server"""
         super().ros_read_params()
@@ -74,15 +75,19 @@ class RoboteqBMS(RComponent):
 
         super().ros_setup()
 
+                # Publisher
+        self.status_pub = rospy.Publisher(
+            '~status', String, queue_size=10)
+        self.status_stamped_pub = rospy.Publisher(
+            '~status_stamped', StringStamped, queue_size=10)
+
         self.bat_data_publisher_ = rospy.Publisher('~data', BatteryStatus, queue_size=100)
         self.bms_temp_publisher_ = rospy.Publisher('~temperature', Int32, queue_size=100)
         self.status_flags_publisher_ = rospy.Publisher('~status_flags', String, queue_size=100)
         self.cell_voltages_publisher_ = rospy.Publisher('~cell_voltages', String, queue_size=100)
         self.cell_currents_publisher_ = rospy.Publisher('~cell_currents', String, queue_size=100)
 
-    def init_state(self):
-        self.status = String()
-        
+    def setup(self):
         super().setup()
         self.serial_device = serial.Serial(
 			port= self.port,
@@ -95,16 +100,9 @@ class RoboteqBMS(RComponent):
 			dsrdtr=False,
 		    rtscts=False
 		    )
-        return super().init_state()
 
     def ready_state(self):
         """Actions performed in ready state"""
-
-        # Check topic health
-
-        if(self.check_topics_health() == False):
-            self.switch_to_state(State.EMERGENCY_STATE)
-            return super().ready_state()
 
         # Publish topic with status
 
@@ -119,10 +117,6 @@ class RoboteqBMS(RComponent):
             self.read()
             
         return super().ready_state()
-
-    def emergency_state(self):
-        if(self.check_topics_health() == True):
-            self.switch_to_state(State.READY_STATE)
 
     def shutdown(self):
         """Shutdowns device
@@ -184,11 +178,12 @@ class RoboteqBMS(RComponent):
 
     def read(self):
         emptys = []
-        self.writeToSerialDevice("?BSC" + "\r")
-        line_read = str(self.readFromSerialDevice())
+        string = "?BSC" + "\r"
+        self.writeToSerialDevice(string.encode())
+        line_read = str(self.readFromSerialDevice().decode())
         try:
             if line_read != '':
-                self.bat_level = float(line_read.partition("BSC=")[2])
+                self.bat_level = float(line_read.partition("BSC=")[2].split('\r')[0])
                 self.battery_status_message.level = self.bat_level
                 emptys.append(False)
             else:
@@ -197,17 +192,29 @@ class RoboteqBMS(RComponent):
             rospy.logerr('%s::readyState: error reading ?BSC - response (%s): %s', rospy.get_name(), line_read, e)
             emptys.append(True)
 
-        self.writeToSerialDevice("?A 1" + "\r")
-        line_read = str(self.readFromSerialDevice())
+        string = "?A 1" + "\r"
+        self.writeToSerialDevice(string.encode())
+        line_read = str(self.readFromSerialDevice().decode())
 
         try:
             if line_read != '':
-                self.current = -float(line_read.partition("A=")[2])
+                self.current = -float(line_read.partition("A=")[2].split('\r')[0])
                 self.battery_status_message.current = self.current*0.01
                 if self.battery_status_message.current < -0.5:
                     self.battery_status_message.is_charging = True
+                    if not self.charge_started:
+                        self.charge_started = True
+                        self.start_time = time.time()
+                        self.battery_status_message.time_charging = 0
+                    else:
+                        actual = time.time()
+                        self.battery_status_message.time_charging = int(round((actual - self.start_time)/60, 1)) 
                 else:
+                    if self.charge_started:
+                        self.charge_started = False
+                        self.battery_status_message.time_charging = 0
                     self.battery_status_message.is_charging = False
+
                 emptys.append(False)
             else:
                 emptys.append(True)
@@ -215,12 +222,13 @@ class RoboteqBMS(RComponent):
             rospy.logerr('%s::readyState: error reading ?A 1 - response (%s):: %s', rospy.get_name(), line_read, e)
             emptys.append(True)
 
-        self.writeToSerialDevice("?V 1" + "\r")
-        line_read = str(self.readFromSerialDevice())
+        string = "?V 1" + "\r"
+        self.writeToSerialDevice(string.encode())
+        line_read = str(self.readFromSerialDevice().decode())
 
         try:
             if line_read != '':
-                self.voltage = float(line_read.partition("V=")[2])
+                self.voltage = float(line_read.partition("V=")[2].split('\r')[0])
                 self.battery_status_message.voltage = self.voltage*0.01
                 emptys.append(False)
             else:
@@ -229,12 +237,13 @@ class RoboteqBMS(RComponent):
             rospy.logerr('%s::readyState: error reading ?V 1 - response (%s):: %s', rospy.get_name(), line_read, e)
             emptys.append(True)
 
-        self.writeToSerialDevice("?T 1" + "\r")
-        line_read = str(self.readFromSerialDevice())
+        string = "?T 1" + "\r"
+        self.writeToSerialDevice(string.encode())
+        line_read = str(self.readFromSerialDevice().decode())
 
         try:
             if line_read != '':
-                temperature = line_read.partition("T=")[2]
+                temperature = line_read.partition("T=")[2].split('\r')[0]
                 self.temperature = float(temperature)
                 self.bms_temperature.data = self.temperature
                 emptys.append(False)
@@ -244,12 +253,13 @@ class RoboteqBMS(RComponent):
             rospy.logerr('%s::readyState: error reading ?T 1 - response (%s):: %s', rospy.get_name(), line_read, e)
             emptys.append(True)
 
-        self.writeToSerialDevice("?BMF" + "\r")
-        line_read = str(self.readFromSerialDevice())
+        string = "?BMF" + "\r"
+        self.writeToSerialDevice(string.encode())
+        line_read = str(self.readFromSerialDevice().decode())
 
         try:
             if line_read != '':
-                self.status_flags = line_read.partition("BMF=")[2]
+                self.status_flags = line_read.partition("BMF=")[2].split('\r')[0]
                 self.status_flags_msg.data = self.status_flags
                 emptys.append(False)
             else:
@@ -258,13 +268,22 @@ class RoboteqBMS(RComponent):
             rospy.logerr('%s::readyState: error reading ?BMF - response(%s): %s', rospy.get_name(), line_read, e)
             emptys.append(True)
 
-        self.writeToSerialDevice("?V" + "\r")
-        line_read = str(self.readFromSerialDevice())
+        string = "?V" + "\r"
+        self.writeToSerialDevice(string.encode())
+        line_read = str(self.readFromSerialDevice().decode())
 
         try:
             if line_read != '':
-                self.cell_voltages = line_read.partition("V=")[2]
+                self.cell_voltages = line_read.partition("V=")[2].split('\r')[0]
                 self.cell_voltages_msg.data = self.cell_voltages
+                cell_voltages_list = self.cell_voltages.split(":")
+                aux_list = []
+                for i in range(len(cell_voltages_list)-3):
+                    v = cell_voltages_list[i+3]
+                    v = float(v)
+                    aux_list.append(float(v/1000.0))
+                self.battery_status_message.cell_voltages = aux_list
+                
                 emptys.append(False)
             else:
                 emptys.append(True)
@@ -272,12 +291,13 @@ class RoboteqBMS(RComponent):
             rospy.logerr('%s::readyState: error reading ?V - response(%s): %s', rospy.get_name(), line_read, e)
             emptys.append(True)
 
-        self.writeToSerialDevice("?A" + "\r")
-        line_read = str(self.readFromSerialDevice())
+        string = "?A" + "\r"
+        self.writeToSerialDevice(string.encode())
+        line_read = str(self.readFromSerialDevice().decode())
 
         try:
             if line_read != '':
-                self.cell_currents = line_read.partition("A=")[2]
+                self.cell_currents = line_read.partition("A=")[2].split('\r')[0]
                 self.cell_currents_msg.data = self.cell_currents
                 emptys.append(False)
             else:
@@ -288,6 +308,6 @@ class RoboteqBMS(RComponent):
 
         if all(emptys):
             rospy.logerr('%s::readyState: no response from bms', self._node_name)
-            self.switchToState(State.FAILURE_STATE)
+            self.switch_to_state(State.FAILURE_STATE)
         elif any(emptys):
             rospy.logwarn('%s::readyState: some response msgs from bms are empty', self._node_name)

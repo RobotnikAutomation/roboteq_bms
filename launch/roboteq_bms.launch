@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <launch>
 	<arg name="port" default="/dev/ttyUSB_BMS"/>
-	<node type="roboteq_bms.py" name="roboteq_bms" pkg="roboteq_bms" output="screen" respawn="true" respawn_delay="10">
+	<node type="roboteq_bms_node.py" name="roboteq_bms" pkg="roboteq_bms" output="screen" respawn="true" respawn_delay="10">
 		<param name="port" value="$(arg port)"/>
 		<param name="desired_freq" value="5"/>
 	</node>

@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import rospy
-from roboteq_bms_ros import RoboteqBMS
+from roboteq_bms.roboteq_bms_ros import RoboteqBMS
 
 
 def main():
